@@ -80,6 +80,9 @@ function Gateway(session, login) {
           case 'login':
             processLogin(sock, msg.authData);
             break;
+          case 'ping':
+            sock.write(encode({type: 'ping'}));
+            break;
           default:
             logger.warn('received unknown message type', msg);
         }
