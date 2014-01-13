@@ -63,7 +63,7 @@ function Gateway(session, login) {
     logger.debug('connection from ' + sock.remoteAddress + ' (using ' + sock.protocol + ')');
 
     sock.loginTimeout = setTimeout(function () {
-      logger.warn('authentication delay timeout !');
+      logger.debug('authentication delay timeout !');
       logout(sock);
     }, loginTimeout);
 
@@ -109,7 +109,7 @@ function Gateway(session, login) {
         processQueue(sock);
         hubiquitus.addActor(sock.identity, session, {sock: sock});
       } else {
-        logger.warn('login error', err);
+        logger.debug('login error', err);
         logout(sock);
       }
     });
