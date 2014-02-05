@@ -19,6 +19,7 @@ events.setMaxListeners(0);
 var defaultPort = 8888;
 var defaultPath = '/hubiquitus';
 var loginTimeout = 30000;
+var heartbeatFreq = 5000;
 
 /**
  * Create a gateway
@@ -52,6 +53,9 @@ function Gateway(session, login) {
   login = login || basicLogin;
   session = session || basicSession;
 
+  _this.socks = {};
+  _this.heartbeatFreq = heartbeatFreq;
+
   var sockOptions = {
     log: function (level, message) {
       sockjsLogger[level](message);
@@ -62,6 +66,7 @@ function Gateway(session, login) {
   _this.sock.on('connection', function (sock) {
     logger.debug('connection from ' + sock.remoteAddress + ' (using ' + sock.protocol + ')');
 
+    _this.socks[sock.identity] = sock;
     sock.loginTimeout = setTimeout(function () {
       logger.debug('authentication delay timeout !');
       logout(sock);
@@ -80,8 +85,8 @@ function Gateway(session, login) {
           case 'login':
             processLogin(sock, msg.authData);
             break;
-          case 'ping':
-            sock.write(encode({type: 'ping'}));
+          case 'negotiate':
+            sock.write(encode({type: 'negotiate', heartbeatFreq:_this.heartbeatFreq}));
             break;
           default:
             logger.warn('received unknown message type', msg);
@@ -92,6 +97,7 @@ function Gateway(session, login) {
     });
 
     sock.on('close', function () {
+      if (sock.identity) delete _this.socks[sock.identity];
       logout(sock);
     });
   });
@@ -102,7 +108,7 @@ function Gateway(session, login) {
       if (!err) {
         sock.identity = identity + '/' + hubiquitus.utils.uuid();
         clearTimeout(sock.loginTimeout);
-        logger.debug('login success from ' + sock.remoteAddress + '; identifier : ' + identity);
+        logger.debug('login success from ' + sock.remoteAddress + '; identifier : ' + sock.identity);
         var feedBack = {type: 'login', content: {id: sock.identity}};
         sock.write(encode(feedBack));
         _this.emit('connected', sock.identity);
@@ -160,6 +166,17 @@ function Gateway(session, login) {
     sock.identity && hubiquitus.removeActor(sock.identity);
     sock.close();
   }
+
+  /**
+   * Send a heartbeat to all opened sockets
+   */
+  function sendHeartbeat() {
+    _.forOwn(_this.socks, function (sock) {
+      sock.write('hb');
+    });
+    setTimeout(function () {sendHeartbeat()}, _this.heartbeatFreq);
+  }
+  sendHeartbeat();
 }
 
 util.inherits(Gateway, EventEmitter);
@@ -174,6 +191,7 @@ Gateway.prototype.start = function (server, params) {
   params = params || {};
   if (!params.port) params.port = defaultPort;
   if (!params.path) params.path = defaultPath;
+  if (params.heartbeatFreq) _this.heartbeatFreq = params.heartbeatFreq;
   server = server || http.createServer();
   _this.sock.installHandlers(server, {prefix: params.path});
 
