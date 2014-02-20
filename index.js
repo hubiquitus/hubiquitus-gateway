@@ -41,7 +41,7 @@ exports.createGateway = function (session, login) {
 
 /**
  * Gateway constructor
- * @param [login] {function} loginentication function
+ * @param [login] {function} auth function
  * @param [session] {function} session actor
  * @constructor
  */
@@ -66,7 +66,7 @@ function Gateway(session, login) {
   _this.sock.on('connection', function (sock) {
     logger.debug('connection from ' + sock.remoteAddress + ' (using ' + sock.protocol + ')');
 
-    _this.socks[sock.identity] = sock;
+    _this.socks[sock.id] = sock;
     sock.loginTimeout = setTimeout(function () {
       logger.debug('authentication delay timeout !');
       logout(sock);
@@ -97,7 +97,7 @@ function Gateway(session, login) {
     });
 
     sock.on('close', function () {
-      if (sock.identity) delete _this.socks[sock.identity];
+      if (sock.id) delete _this.socks[sock.id];
       logout(sock);
     });
   });
@@ -174,7 +174,7 @@ function Gateway(session, login) {
     _.forOwn(_this.socks, function (sock) {
       sock.write('hb');
     });
-    setTimeout(function () {sendHeartbeat()}, _this.heartbeatFreq);
+    setTimeout(sendHeartbeat, _this.heartbeatFreq);
   }
   sendHeartbeat();
 }
