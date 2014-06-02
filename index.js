@@ -162,8 +162,10 @@ function Gateway(session, login) {
   }
 
   function logout(sock) {
-    _this.emit('disconnected', sock.identity);
-    sock.identity && hubiquitus.removeActor(sock.identity);
+    if (sock.identity) {
+      _this.emit('disconnected', sock.identity);
+      hubiquitus.removeActor(sock.identity);
+    }
     sock.close();
   }
 
