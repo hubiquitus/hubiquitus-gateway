@@ -216,7 +216,7 @@ Gateway.prototype.start = function (server, params) {
 /* basic implementations */
 
 function basicLogin(sock, data, cb) {
-  if (_.isString(data.username) && !_.isEmpty(data.username)) {
+  if (data && _.isString(data.username) && !_.isEmpty(data.username)) {
     cb && cb(null, data.username);
   } else {
     cb && cb('invalid identifier ' + data.username);
@@ -226,9 +226,14 @@ function basicLogin(sock, data, cb) {
 function basicSession(req) {
   var reply = req.reply;
   delete req.reply;
-  reply && events.once('res|' + this.sock.identity + '|' + req.id, function (res) {
+  var eventName = 'res|' + this.sock.identity + '|' + req.id;
+  req.cb && events.once(eventName, function (res) {
     reply(res.err, res.content);
   });
+  setTimeout(function () {
+    events.removeAllListeners(eventName);
+  }, req.timeout);
+
   req.to = this.sock.identity;
   req.type = 'req';
   this.sock.write(encode(req));
