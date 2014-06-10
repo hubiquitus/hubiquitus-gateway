@@ -1,7 +1,7 @@
 {
   "name": "hubiquitus-gateway",
   "description": "Hubiquitus gateway",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "homepage": "http://www.hubiquitus.com",
   "repository": {
     "type": "git",
