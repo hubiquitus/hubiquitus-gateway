@@ -252,7 +252,7 @@ function basicLogin(sock, data, cb) {
   if (data && _.isString(data.username) && !_.isEmpty(data.username)) {
     cb && cb(null, data.username);
   } else {
-    cb && cb('invalid identifier ' + data.username);
+    cb && cb('invalid identifier ' + data);
   }
 }
 
