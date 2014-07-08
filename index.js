@@ -22,6 +22,11 @@ var loginTimeout = 30000;
 var defaultHeartbeatFreq = 5000;
 var defaultClientTimeout = 2 * defaultHeartbeatFreq;
 
+
+/**
+ * TODO : Send an error when server refuse a login attempt or disconnect
+ */
+
 /**
  * Create a gateway
  * @param [session] {function} session actor
@@ -79,7 +84,7 @@ function Gateway(session, login, opts) {
     _this.socks[sock.id] = sock;
     sock.loginTimeout = setTimeout(function () {
       logger.debug('authentication delay timeout !');
-      logout(sock);
+      disconnect(sock, 'login timeout');
     }, loginTimeout);
     sock.hb = Date.now();
 
@@ -114,16 +119,30 @@ function Gateway(session, login, opts) {
 
     sock.on('close', function () {
       if (sock.id) delete _this.socks[sock.id];
-      logout(sock);
+      disconnect(sock);
     });
   });
 
   function processLogin(sock, data) {
-    if (sock.identity) logout(sock);
+    if (sock.identity) {
+      disconnect(sock, 'Already logged');
+      return;
+    }
+
     login(sock, data, function (err, identity) {
+      clearTimeout(sock.loginTimeout);
       if (!err) {
-        sock.identity = identity + '/' + hubiquitus.utils.uuid();
-        clearTimeout(sock.loginTimeout);
+        var duplicata = _.find(_this.socks, function (item) {
+          return item.identity === identity;
+        });
+
+        if (duplicata) {
+          logger.debug('login error : User with identity' + identity + ' already connected');
+          disconnect(sock, 'Duplicated identity');
+          return;
+        }
+
+        sock.identity = identity;
         logger.debug('login success from ' + sock.remoteAddress + '; identifier : ' + sock.identity);
         var feedBack = {type: 'login', content: {id: sock.identity}};
         sock.write(encode(feedBack));
@@ -132,7 +151,7 @@ function Gateway(session, login, opts) {
         hubiquitus.addActor(sock.identity, session, {sock: sock});
       } else {
         logger.debug('login error', err);
-        logout(sock);
+        disconnect(sock, 'Invalid credentials');
       }
     });
   }
@@ -177,7 +196,19 @@ function Gateway(session, login, opts) {
     });
   }
 
-  function logout(sock) {
+  function disconnect(sock, msg) {
+    if (msg) {
+      var reason = {type: 'disconnect', content: msg};
+      sock.write(encode(reason));
+      setTimeout(function () {
+        _disconnect(sock);
+      }, 2000);
+    } else {
+      _disconnect(sock);
+    }
+  }
+
+  function _disconnect(sock) {
     if (sock.identity) {
       _this.emit('disconnected', sock.identity);
       hubiquitus.removeActor(sock.identity);
@@ -204,7 +235,7 @@ function Gateway(session, login, opts) {
     var now = Date.now();
     _.forOwn(_this.socks, function (sock) {
       if (sock.hb + _this.clientTimeout < now) {
-        logout(sock);
+        disconnect(sock);
       }
     });
     setTimeout(checkClientsHeartbeat, 1000)
@@ -247,7 +278,6 @@ Gateway.prototype.start = function (server, params) {
 };
 
 /* basic implementations */
-
 function basicLogin(sock, data, cb) {
   if (data && _.isString(data.username) && !_.isEmpty(data.username)) {
     cb && cb(null, data.username);
