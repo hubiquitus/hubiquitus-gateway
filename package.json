@@ -1,7 +1,7 @@
 {
   "name": "hubiquitus-gateway",
   "description": "Hubiquitus gateway",
-  "version": "0.8.5",
+  "version": "0.8.6",
   "homepage": "http://www.hubiquitus.com",
   "repository": {
     "type": "git",
@@ -12,10 +12,10 @@
     "node": ">0.10.0"
   },
   "dependencies": {
-    "lodash": "2.2.*",
+    "lodash": "4.5.*",
     "hubiquitus-core": "0.8.*",
     "sockjs": "0.3.*",
-    "tv4": "1.0.11"
+    "tv4": "1.2.*"
   },
   "devDependencies": {
     "jshint": "2.3.*",
